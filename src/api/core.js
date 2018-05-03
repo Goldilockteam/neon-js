@@ -194,6 +194,52 @@ export const signTx = config => {
   checkProperty(config, 'tx')
   let promise
   if (config.signingFunction) {
+    return Promise.reject(
+      new Error('Custom signing function is not supported!')
+    )
+  } else if (config.privateKey) {
+
+    // let isNode = typeof process === 'object' && process + '' === '[object process]';
+    let isNode = typeof module !== 'undefined' && this.module !== module;
+
+    if(!isNode) {
+      // in the browser:
+      // - RPC the TX to the server
+      // - read the signed response and return it
+
+    }
+    else {
+      // at the server:
+      // - load the account private key from file storage (TBD: PASSPHARSE?)
+      // - sign and return the transaction
+
+    }
+
+    /*
+    let acct = new Account(config.privateKey)
+    if (config.address !== acct.address && !config.sendingFromSmartContract) {
+      return Promise.reject(
+        new Error('Private Key and Balance address does not match!')
+      )
+    }
+    promise = Promise.resolve(config.tx.sign(acct.privateKey))
+    */
+
+  } else {
+    return Promise.reject(
+      new Error('Needs privateKey or signingFunction to sign!')
+    )
+  }
+  return promise.then(signedTx => {
+    return Object.assign(config, { tx: signedTx })
+  })
+}
+
+/*
+export const signTx = config => {
+  checkProperty(config, 'tx')
+  let promise
+  if (config.signingFunction) {
     let acct = new Account(config.publicKey)
     promise = config.signingFunction(config.tx, acct.publicKey)
       .then(res => {
@@ -217,6 +263,7 @@ export const signTx = config => {
     return Object.assign(config, { tx: signedTx })
   })
 }
+*/
 
 /**
  * Sends a transaction off within the config object.
