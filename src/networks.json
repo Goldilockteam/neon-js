@@ -28,7 +28,7 @@
       }
     },
     "ExtraConfiguration": {
-      "neonDB": "http://api.wallet.cityofzion.io",
+      "neonDB": "https://api.neonwallet.com",
       "neoscan": "https://api.neoscan.io/api/main_net"
     }
   },
@@ -61,7 +61,7 @@
       }
     },
     "ExtraConfiguration": {
-      "neonDB": "http://testnet-api.wallet.cityofzion.io",
+      "neonDB": "https://testnet-api.neonwallet.com",
       "neoscan": "https://neoscan-testnet.io/api/test_net"
     }
   },
