@@ -2,11 +2,14 @@ import axios from 'axios'
 import { Balance, Claims } from '../wallet'
 import { ASSET_ID } from '../consts'
 import { Fixed8 } from '../utils'
-import { networks, httpsOnly } from '../settings'
+import { networks, httpsOnly, timeout } from '../settings'
 import logger from '../logging'
+import RPCClient from '../rpc/client'
 
 const log = logger('api')
 export const name = 'neoscan'
+
+var cachedRPC = null
 
 /**
  * Returns the appropriate NeoScan endpoint.
@@ -33,15 +36,26 @@ export const getRPCEndpoint = net => {
       if (node.height > bestHeight) {
         bestHeight = node.height
         nodes = [node]
-      } else if (node.height === bestHeight) {
+      } else if (node.height + 1 >= bestHeight) {
         nodes.push(node)
       }
     }
     if (nodes.length === 0) throw new Error('No eligible nodes found!')
-    const selectedURL = nodes[Math.floor(Math.random() * nodes.length)].url
-    log.info(`Best node from neoscan ${net}: ${selectedURL}`)
-    return selectedURL
+    var urls = nodes.map(n => n.url)
+    if (urls.includes(cachedRPC)) {
+      return new RPCClient(cachedRPC).ping().then(num => {
+        if (num <= timeout.ping) return cachedRPC
+        cachedRPC = null
+        return getRPCEndpoint(net)
+      })
+    }
+    var clients = urls.map(u => new RPCClient(u))
+    return Promise.race(clients.map(c => c.ping().then(_ => c.net)))
   })
+    .then(fastestUrl => {
+      cachedRPC = fastestUrl
+      return fastestUrl
+    })
 }
 
 /**
@@ -90,7 +104,7 @@ export const getClaims = (net, address) => {
  */
 export const getMaxClaimAmount = (net, address) => {
   const apiEndpoint = getAPIEndpoint(net)
-  return axios.get(apiEndpoint + '/v1/get_claimable/' + address).then(res => {
+  return axios.get(apiEndpoint + '/v1/get_unclaimed/' + address).then(res => {
     log.info(
       `Retrieved maximum amount of gas claimable after spending all NEO for ${address} from neoscan ${net}`
     )
@@ -142,44 +156,25 @@ export const getWalletDBHeight = net => {
 export const getTransactionHistory = (net, address) => {
   const apiEndpoint = getAPIEndpoint(net)
   return axios
-    .get(apiEndpoint + '/v1/get_address_neon/' + address)
+    .get(apiEndpoint + '/v1/get_last_transactions_by_address/' + address)
     .then(response => {
       log.info(`Retrieved History for ${address} from neoscan ${net}`)
-      return parseTxHistory(response.data.txids)
+      return parseTxHistory(response.data, address)
     })
 }
 
-/* eslint-disable camelcase */
-const parseTxHistory = rawTxs => {
-  const txs = []
-  const lastItem = rawTxs.length - 1
-  rawTxs.forEach((tx, ind) => {
-    let change
-    if (ind !== lastItem) {
-      const prevTx = rawTxs[ind + 1]
-      const currBal = flattenBalance(tx.balance)
-      const prevBal = flattenBalance(prevTx.balance)
-      change = {
-        NEO: new Fixed8(currBal.NEO || 0).minus(prevBal.NEO || 0),
-        GAS: new Fixed8(currBal.GAS || 0).minus(prevBal.GAS || 0)
-      }
-    } else {
-      let symbol = tx.asset_moved === ASSET_ID.NEO ? 'NEO' : 'GAS'
-      change = { [symbol]: new Fixed8(tx.amount_moved) }
+function parseTxHistory (rawTxs, address) {
+  return rawTxs.map(tx => {
+    const vin = tx.vin.filter(i => i.address_hash === address)
+    const vout = tx.vouts.filter(o => o.address_hash === address)
+    const change = {
+      NEO: vin.filter(i => i.asset === ASSET_ID.NEO).reduce((p, c) => p.add(c.value), new Fixed8(0)),
+      GAS: vout.filter(i => i.asset === ASSET_ID.GAS).reduce((p, c) => p.add(c.value), new Fixed8(0))
     }
-    txs.push({
+    return {
       txid: tx.txid,
-      blockHeight: tx.block_height,
+      blockHeight: new Fixed8(tx.block_height),
       change
-    })
+    }
   })
-  return txs
-}
-/* eslint-enable camelcase */
-
-const flattenBalance = balance => {
-  return balance.reduce((bal, asset) => {
-    bal[asset.asset] = new Fixed8(asset.amount)
-    return bal
-  }, {})
 }

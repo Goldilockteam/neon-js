@@ -65,9 +65,9 @@ The order of the keys are:
 3. scriptHash
 4. address
 
-When you instantiate a `Account` with a key, you can retrieve any format that is below it in the list. For example, if we instantiate with a public key, we can get the publc key, scriptHash and address but not the private key.
+When you instantiate an `Account` with a key, you can retrieve any format that is below it in the list. For example, if we instantiate with a public key, we can get the publc key, scriptHash and address but not the private key.
 
-The Account class can only be instantiated from encrypted key, private key, public key, or address. ScriptHash is not accepted as there is currently no way to verify if a scripthash is legitimate.
+The Account class can be instantiated from encrypted key, private key, public key, address or ScriptHash.
 
 The `encryptedKey` is special as it is the lowest level key but requires the user to unlock it first before we can derive anything from it. This can be done through the `decrypt` method.
 
@@ -114,13 +114,14 @@ The Balance class stores the balance of the account. It is usually retrieved usi
 
 ```js
 import Neon from '@cityofzion/neon-js'
+// This creates a balance object but it is empty and not really useful
 Neon.create.balance({net: 'TestNet', address: 'ALq7AWrhAueN6mJNqk6FHJjnsEoPRytLdW'})
 
 import {wallet, api} from '@cityofzion/neon-js'
 // This form is useless as it is an empty balance.
 const balance = new wallet.Balance({net: 'TestNet', address: 'ALq7AWrhAueN6mJNqk6FHJjnsEoPRytLdW'})
-// We get a useful balance that can be used to fill a transaction through api
-const filledBalance = api.getBalanceFrom('ALq7AWrhAueN6mJNqk6FHJjnsEoPRytLdW', api.neonDB)
+// We get a useful balance that can be used to fill a transaction through api.neonDB
+const filledBalance = api.neonDB.getBalance('MainNet','ALq7AWrhAueN6mJNqk6FHJjnsEoPRytLdW')
 // This contains all symbols of assets available in this balance
 const symbols = filledBalance.assetSymbols
 // We retrieve the unspent coins from the assets object using the symbol
@@ -272,12 +273,18 @@ Verification methods for the various key formats are available::
 import Neon from '@cityofzion/neon-js'
 Neon.is.address(addrStr)
 Neon.is.privateKey(keyStr)
-Neon.is.NEP2(encryptedStr)
+Neon.is.encryptedKey(encryptedStr)
+Neon.is.publicKey(publicKeyStr)
+Neon.is.wif(wifStr)
+Neon.is.scriptHash(scriptHashStr)
 
 import {wallet} from '@cityofzion/neon-js'
 wallet.isAddress(addrStr)
 wallet.isPrivateKey(keyStr)
 wallet.isNEP2(keyStr)
+wallet.isPublicKey(publicKeyStr)
+wallet.isWIF(wifStr)
+wallet.isScriptHash(scriptHashStr)
 ```
 
 These methods will return a boolean regarding the key format. No errors will be thrown.

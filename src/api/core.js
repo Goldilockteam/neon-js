@@ -1,8 +1,8 @@
-import { Account, getScriptHashFromAddress } from '../wallet'
+import { Account, getScriptHashFromAddress, generateRandomArray } from '../wallet'
 import { ASSET_ID } from '../consts'
 import { Query } from '../rpc'
 import { Transaction, TransactionOutput, TxAttrUsage } from '../transactions'
-import { reverseHex } from '../utils'
+import { reverseHex, ab2hexstring } from '../utils'
 import { loadBalance } from './switch'
 import logger from '../logging'
 
@@ -63,7 +63,7 @@ export const sendAsset = config => {
 export const claimGas = config => {
   return fillUrl(config)
     .then(fillKeys)
-    .then(c => loadBalance(getClaimsFrom, config))
+    .then(fillClaims)
     .then(c => createTx(c, 'claim'))
     .then(c => signTx(c))
     .then(c => sendTx(c))
@@ -97,6 +97,7 @@ export const doInvoke = config => {
     .then(c => createTx(c, 'invocation'))
     .then(c => addAttributesIfExecutingAsSmartContract(c))
     .then(c => addAttributesForMintToken(c))
+    .then(attachAttributesForEmptyTransaction)
     .then(c => signTx(c))
     .then(c => attachInvokedContractForMintToken(c))
     .then(c => attachContractIfExecutingAsSmartContract(c))
@@ -148,6 +149,16 @@ export const fillKeys = config => {
 }
 
 /**
+ * Retrieves Claims if no claims has been attached.
+ * @param {object} config
+ * @return {Promise<object>} Configuration object.
+ */
+export const fillClaims = config => {
+  if (config.claims) return Promise.resolve(config)
+  return loadBalance(getClaimsFrom, config)
+}
+
+/**
  * Creates a transaction with the given config and txType.
  * @param {object} config - Configuration object.
  * @param {string|number} txType - Transaction Type. Name of transaction or the transaction type number. eg, 'claim' or 2.
@@ -156,6 +167,7 @@ export const fillKeys = config => {
 export const createTx = (config, txType) => {
   if (config.tx) return config
   if (typeof txType === 'string') txType = txType.toLowerCase()
+  if (!config.fees) config.fees = 0
   let tx
   switch (txType) {
     case 'claim':
@@ -166,13 +178,13 @@ export const createTx = (config, txType) => {
     case 'contract':
     case 128:
       checkProperty(config, 'balance', 'intents')
-      tx = Transaction.createContractTx(config.balance, config.intents, config.override)
+      tx = Transaction.createContractTx(config.balance, config.intents, config.override, config.fees)
       break
     case 'invocation':
     case 209:
       checkProperty(config, 'balance', 'gas', 'script')
       if (!config.intents) config.intents = []
-      tx = Transaction.createInvocationTx(config.balance, config.intents, config.script, config.gas, config.override)
+      tx = Transaction.createInvocationTx(config.balance, config.intents, config.script, config.gas, config.override, config.fees)
       break
     default:
       return Promise.reject(new Error(`Tx Type not found: ${txType}`))
@@ -414,6 +426,20 @@ const attachContractIfExecutingAsSmartContract = config => {
 }
 
 /**
+ * Adds the necessary attributes for validating an empty transaction.
+ * @param {object} config
+ * @return {Promise<object>}
+ */
+const attachAttributesForEmptyTransaction = config => {
+  if (config.tx.inputs.length === 0 && config.tx.outputs.length === 0) {
+    config.tx.addAttribute(TxAttrUsage.Script, reverseHex(getScriptHashFromAddress(config.address)))
+    // This adds some random bits to the transaction to prevent any hash collision.
+    config.tx.addRemark(Date.now().toString() + ab2hexstring(generateRandomArray(4)))
+  }
+  return Promise.resolve(config)
+}
+
+/**
  * Check that properties are defined in obj.
  * @param {object} obj - Object to check.
  * @param {string[]}  props - List of properties to check.
@@ -495,7 +521,7 @@ export const getRPCEndpointFrom = (config, api) => {
  * @param {string} config.net - 'MainNet', 'TestNet' or a custom URL.
  * @param {string} config.address - Wallet address
  * @param {object} api - The endpoint API object. eg, neonDB or Neoscan.
- * @return {Promise<History>} - Transaction history
+ * @return {Promise<PastTransaction[]>} - Transaction history
  */
 export const getTransactionHistoryFrom = (config, api) => {
   return new Promise((resolve) => {
