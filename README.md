@@ -1,8 +1,10 @@
-## Deps init for source build (tmp workaround)
+## Deps init for source build (tmp workaround for building on Hyper-V)
 
 Run twice:
 
 `npm install --unsafe-perm --rollback=false`
+
+In case of `Error: -116`, reboot and rm/clone again.
 
 <p align="center">
   <img
