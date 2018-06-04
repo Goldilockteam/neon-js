@@ -1,10 +1,12 @@
 ## Deps init for source build (tmp workaround for building on Hyper-V)
 
-Run twice:
+Run twice or more times - seems like FS sync issues*:
 
 `npm install --unsafe-perm --rollback=false`
 
-In case of `Error: -116`, reboot and rm/clone again.
+In case of `Error: -116` where the locked file is impossible to delete, reboot and rm/clone again.
+
+*(add sync/sleep into zopfli build TBD)
 
 <p align="center">
   <img
