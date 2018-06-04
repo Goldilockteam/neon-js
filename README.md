@@ -1,5 +1,7 @@
 ## Deps init for source build (tmp workaround)
 
+Run twice:
+
 `npm install --unsafe-perm --rollback=false`
 
 <p align="center">
