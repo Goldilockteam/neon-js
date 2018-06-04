@@ -1,4 +1,4 @@
-## Deps init for source build (tmp workaround for building on Hyper-V)
+## Deps init for source build (tmp workaround for building on Hyper-V/Docker)
 
 Run twice or more times - seems like FS sync issues*:
 
