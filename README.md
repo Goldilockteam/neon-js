@@ -1,3 +1,7 @@
+## Deps init for source build (tmp workaround)
+
+`npm install --unsafe-perm --rollback=false`
+
 <p align="center">
   <img
     src="http://res.cloudinary.com/vidsy/image/upload/v1503160820/CoZ_Icon_DARKBLUE_200x178px_oq0gxm.png"
