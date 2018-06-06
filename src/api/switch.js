@@ -49,25 +49,26 @@ const increaseNeonDBWeight = () => {
  * @param {object} config - The configuration object to pass in to the API function
  */
 export const loadBalance = (func, config) => {
-  if (Math.random() > apiSwitch) {
-    return func(config, neoscan)
-      .then(c => {
-        increaseNeoscanWeight()
-        return c
-      })
-      .catch(() => {
-        increaseNeonDBWeight()
-        return func(config, neonDB)
-      })
-  } else {
-    return func(config, neonDB)
-      .then(c => {
-        increaseNeonDBWeight()
-        return c
-      })
-      .catch(() => {
-        increaseNeoscanWeight()
-        return func(config, neoscan)
-      })
-  }
+  return func(config, neoscan)
+  // if (Math.random() > apiSwitch) {
+  //   return func(config, neoscan)
+  //     .then(c => {
+  //       increaseNeoscanWeight()
+  //       return c
+  //     })
+  //     .catch(() => {
+  //       increaseNeonDBWeight()
+  //       return func(config, neonDB)
+  //     })
+  // } else {
+  //   return func(config, neonDB)
+  //     .then(c => {
+  //       increaseNeonDBWeight()
+  //       return c
+  //     })
+  //     .catch(() => {
+  //       increaseNeoscanWeight()
+  //       return func(config, neoscan)
+  //     })
+  // }
 }

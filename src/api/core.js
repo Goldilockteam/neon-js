@@ -1,7 +1,8 @@
 import { Account, getScriptHashFromAddress, generatePrivateKey } from '../wallet'
 import { ASSET_ID } from '../consts'
 import { Query } from '../rpc'
-import { Transaction, TransactionOutput, TxAttrUsage } from '../transactions'
+import { Transaction, TransactionOutput, TxAttrUsage,
+  serializeTransaction, deserializeTransaction } from '../transactions'
 import { reverseHex } from '../utils'
 import { loadBalance } from './switch'
 import logger from '../logging'
@@ -201,7 +202,7 @@ export const createTx = (config, txType) => {
  * @param {bool} [config.sendingFromSmartContract] - Optionally specify that the source address is a smart contract that doesn't correspond to the private key.
  * @return {Promise<object>} Configuration object.
  */
-export const signTx = config => {
+export const signTx_orig = config => {
   checkProperty(config, 'tx')
   let promise
   if (config.signingFunction) {
@@ -227,6 +228,25 @@ export const signTx = config => {
   return promise.then(signedTx => {
     return Object.assign(config, { tx: signedTx })
   })
+}
+
+export const signTx = config => {
+  checkProperty(config, 'tx')
+  checkProperty(config, 'address')
+
+  const serializedTx = serializeTransaction(config.tx)
+
+  const ret = window._comm.req({
+    fn: 'signTx',
+    address: config.address,
+    tx: serializedTx
+  })
+  .then(serializedSignedTx => {
+    const deserializedSignedTx = deserializeTransaction(serializedSignedTx)
+    return Object.assign(config, { tx: deserializedSignedTx })
+  })
+
+  return ret
 }
 
 /**
