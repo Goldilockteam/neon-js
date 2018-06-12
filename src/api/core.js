@@ -242,8 +242,9 @@ export const signTx = config => {
     tx: serializedTx
   })
   .then(serializedSignedTx => {
-    const deserializedSignedTx = deserializeTransaction(serializedSignedTx)
-    return Object.assign(config, { tx: deserializedSignedTx })
+    // const deserializedSignedTx = deserializeTransaction(serializedSignedTx)
+    // return Object.assign(config, { tx: deserializedSignedTx })
+    return Object.assign(config, { tx: serializedSignedTx })
   })
 
   return ret
