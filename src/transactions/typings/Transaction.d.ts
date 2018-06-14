@@ -1,4 +1,4 @@
-import { Balance, Claims } from '../../wallet';
+import { Account, Balance, Claims } from '../../wallet';
 import {
   TransactionInput,
   TransactionAttribute,
@@ -20,7 +20,7 @@ export class Transaction {
   public outputs: TransactionOutput[]
   public scripts: Witness[]
 
-  constructor(tx: Transaction)
+  constructor(tx?: Transaction)
 
   /** Exclusive Data */
   exclusiveData(): object

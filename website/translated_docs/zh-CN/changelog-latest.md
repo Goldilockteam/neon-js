@@ -3,6 +3,93 @@ id: changelog-latest
 title: Changelog (v3)
 ---
 
+3.9.0
+=====
+
+- Smart Contract
+
+  - Add Runtime.Deserialize logic. This is the deserialization logic found in the VM.
+
+  ```js
+  import {sc} from '@cityofzion/neon-js'
+  sc.deserialize('800200126d65737361676520746f206d7973656c66210204438ffc5a')
+  ```
+
+- Fixes
+
+  - All class constructors now accept optional parameters. This means that all classes should be easily instantiated with defaults if required.
+  - Update dump logic for managed methods to dump fees.
+
+3.8.1
+=====
+
+- Fixes
+
+  - Typings update
+
+3.8.0
+=====
+
+- Transactions
+
+  - Transactions now support attaching fees
+
+- API
+
+  - Neoscan `getTransactionHistory` is updated to use a paginated endpoint. It currently only supports a single page but it should speed up loading by a significant amount. The downside is that it will not return the full history.
+
+- Fixes
+
+  - `getRPCEndpoint` is adjusted to also return RPCs that are only 1 block behind the best height. This reduces the load on a single RPC on the chance that only 1 endpoint has the best height. This should increase RPC reliability while not sacrificing too much in terms of information.
+
+3.7.3
+=====
+
+- Fixes
+
+  - Fix scriptBuilder to ScriptParams error parsing nonce
+  - Use generateRandomArray in attachAttributes
+  - Fix timeout setting for api calls
+  - Correct semantic API for verify
+  - Typings update
+
+3.7.0
+=====
+
+- RPC
+
+  - RPC Client now has the fields `latency` and `lastSeenHeight` and method `ping()`.
+
+  ```js
+  import {rpc} from '@cityofzion/neon-js
+
+  var client = new rpc.RPCClient(url)
+  client.ping()
+  .then(ms => {
+    console.log(ms) // latency in milliseconds. Max of 2000 (default timeout for ping)
+    console.log(client.latency) // This is an average of last 5 values retrieved using ping()
+    console.log(client.lastSeenHeight) // This is filled whenever getBlockCount is called
+  })
+  ```
+
+  - RPC Client now takes an extra argument `config` which exposes the underlying axios instance, allowing users to customize the axios configuration.
+
+- API
+
+  - Add attribute and remark for signing empty transactions. Now if you use `doInvoke` for your token transfers, it will automatically setup your transaction to be accepted by the NEO node without the need for any asset inputs.
+  - `claimGas` now accepts a `claims` property as an override for claims. This behavior is inline with `sendAsset` and `doInvoke` accepting `balance` overrides.
+  - `getRPCEndpoint` now ensures that the returned endpoint is callable by doing a ping check internally. It will also cache the endpoint to return next time instead of repeatedly pinging every single healthy node.
+
+- Settings
+
+  - Settings now contain `timeout` which setups the timeouts for `ping` and all rpc calls
+
+- Fixes
+
+  - Fix faulty url in networks config file
+  - Fix typings for strategy
+  - Update `neoscan.getMaxClaimAmount` to use `get_unclaimed` endpoint
+
 3.6.2
 =====
 

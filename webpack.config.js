@@ -1,5 +1,5 @@
 const CleanWebpackPlugin = require('clean-webpack-plugin')
-const ZopfliWebpackPlugin = require('zopfli-webpack-plugin')
+// const ZopfliWebpackPlugin = require('zopfli-webpack-plugin')
 
 let common = {
   entry: './src/index.js',
@@ -31,15 +31,15 @@ if (process.env.NODE_ENV === 'development') {
   common.devtool = 'source-map'
 }
 
-if (process.env.NODE_ENV === 'production') {
-  common.plugins.push(new ZopfliWebpackPlugin({
-    asset: '[path].gz[query]',
-    algorithm: 'zopfli',
-    test: /\.(js|html)$/,
-    threshold: 10240,
-    minRatio: 0.8
-  }))
-}
+// if (process.env.NODE_ENV === 'production') {
+//   common.plugins.push(new ZopfliWebpackPlugin({
+//     asset: '[path].gz[query]',
+//     algorithm: 'zopfli',
+//     test: /\.(js|html)$/,
+//     threshold: 10240,
+//     minRatio: 0.8
+//   }))
+// }
 
 module.exports = function (mode) {
   return [

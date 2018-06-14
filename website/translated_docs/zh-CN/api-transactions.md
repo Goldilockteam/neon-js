@@ -77,3 +77,42 @@ const serializedTx = tx.serialize()
 7. 独占数据（每种交易类型都是唯一的）
 
 各项交易所需的各种数据。例如，ClaimTransaction 将具有 `claims` 包含所有可提取的（claimable）交易的字段。 InvocationTransaction 将具有该 `script` 字段来代替智能合同调用。
+
+## Calculation Strategies
+
+You may specify the calculation strategy used when calculating inputs. The strategy determines how inputs are chosen to meet the intents. For example, in a wallet with inputs of 1,2,3,4 and 5 NEO, there are many ways to fill an intent of 3 NEO. We can either fill it exactly with the 5 NEO input, or choose to use the smallest possible inputs so as to slowly consolidate our coins.
+
+Currently, the only way to do that is to set the default strategy in settings.
+
+There are 3 strategies to choose from. They are:
+
+1. `balancedApproach`. This is the default strategy. It tried to find an single input that matches the entire output. Failing that, it chooses the largest possible input that fits within the output before filling the rest of the requirement. Taking the example above, we will choose the 3 NEO coin immediately as it fits the output exactly.
+
+2. `largestFirst`. As the name suggests, the intent is filled starting with the largest input available. Here, we will choose the 5 NEO coin, constructing a change output of 2 NEO.
+
+3. `smallestFirst`. We fill the intent starting with the smallest input available. We will choose the inputs 1 and 2 NEO to fill the intent fo 3 NEO.
+
+```js
+import {settings, tx} from '@cityofzion/neon-js'
+
+settings.defaultCalculationStrategy = tx.calculationStrategy.smallestFirst
+```
+
+## Fees
+
+Attaching fees is supported as the last argument in both creating transactions and also calculating. Fees work by having more GAS inputs than outputs. The difference between the inputs and the outputs are taken as fees. Fees first contribute towards system fees (eg. transaction costs, etc). Any excess will be considered as network fees and are used to prioritise transactions.
+
+In the case of InvocationTransactions, the fees paid for running the smart contract is indicated by a separate field. So there are 3 fees available in InvocationTransactions: smart contract execution fees, system fees and network fees. Do note they are separate so any excess fees paid towards running the smart contract will not spill into system or network fees.
+
+```js
+import {tx} from '@cityofzion/neon-js'
+
+// This attaches a fee of 1 GAS.
+tx.Transaction.createContractTx(balances, intents, {}, 1)
+
+// Another way is to attach fees on calculation
+var newTx = new tx.Transaction()
+newTx.addIntent({})
+.calculate(balance, null, 1)
+
+```

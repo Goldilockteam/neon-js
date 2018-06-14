@@ -1,9 +1,9 @@
-import { Account, getScriptHashFromAddress, generatePrivateKey } from '../wallet'
+import { Account, getScriptHashFromAddress, generateRandomArray } from '../wallet'
 import { ASSET_ID } from '../consts'
 import { Query } from '../rpc'
 import { Transaction, TransactionOutput, TxAttrUsage,
   serializeTransaction, deserializeTransaction } from '../transactions'
-import { reverseHex } from '../utils'
+import { reverseHex, ab2hexstring } from '../utils'
 import { loadBalance } from './switch'
 import logger from '../logging'
 
@@ -44,7 +44,8 @@ export const sendAsset = config => {
         address: config.address,
         intents: config.intents,
         balance: config.balance,
-        tx: config.tx
+        tx: config.tx,
+        fees: config.fees
       }
       log.error(`sendAsset failed with: ${err.message}. Dumping config`, dump)
       throw err
@@ -70,7 +71,11 @@ export const claimGas = config => {
     .then(c => sendTx(c))
     .catch(err => {
       const dump = {
-        net: config.net, address: config.address, intents: config.intents, claims: config.claims, tx: config.tx
+        net: config.net,
+        address: config.address,
+        intents: config.intents,
+        tx: config.tx,
+        claims: config.claims
       }
       log.error(`claimGas failed with ${err.message}. Dumping config`, dump)
       throw err
@@ -105,7 +110,14 @@ export const doInvoke = config => {
     .then(c => sendTx(c))
     .catch(err => {
       const dump = {
-        net: config.net, address: config.address, intents: config.intents, balance: config.balance, script: config.script, gas: config.gas, tx: config.tx
+        net: config.net,
+        address: config.address,
+        intents: config.intents,
+        balance: config.balance,
+        tx: config.tx,
+        script: config.script,
+        gas: config.gas,
+        fees: config.fees
       }
       log.error(`doInvoke failed with ${err.message}. Dumping config`, dump)
       throw err
@@ -168,6 +180,7 @@ export const fillClaims = config => {
 export const createTx = (config, txType) => {
   if (config.tx) return config
   if (typeof txType === 'string') txType = txType.toLowerCase()
+  if (!config.fees) config.fees = 0
   let tx
   switch (txType) {
     case 'claim':
@@ -178,13 +191,13 @@ export const createTx = (config, txType) => {
     case 'contract':
     case 128:
       checkProperty(config, 'balance', 'intents')
-      tx = Transaction.createContractTx(config.balance, config.intents, config.override)
+      tx = Transaction.createContractTx(config.balance, config.intents, config.override, config.fees)
       break
     case 'invocation':
     case 209:
       checkProperty(config, 'balance', 'gas', 'script')
       if (!config.intents) config.intents = []
-      tx = Transaction.createInvocationTx(config.balance, config.intents, config.script, config.gas, config.override)
+      tx = Transaction.createInvocationTx(config.balance, config.intents, config.script, config.gas, config.override, config.fees)
       break
     default:
       return Promise.reject(new Error(`Tx Type not found: ${txType}`))
@@ -407,7 +420,7 @@ const attachAttributesForEmptyTransaction = config => {
   if (config.tx.inputs.length === 0 && config.tx.outputs.length === 0) {
     config.tx.addAttribute(TxAttrUsage.Script, reverseHex(getScriptHashFromAddress(config.address)))
     // This adds some random bits to the transaction to prevent any hash collision.
-    config.tx.addRemark(Date.now().toString() + generatePrivateKey().substr(0, 8))
+    config.tx.addRemark(Date.now().toString() + ab2hexstring(generateRandomArray(4)))
   }
   return Promise.resolve(config)
 }
@@ -494,7 +507,7 @@ export const getRPCEndpointFrom = (config, api) => {
  * @param {string} config.net - 'MainNet', 'TestNet' or a custom URL.
  * @param {string} config.address - Wallet address
  * @param {object} api - The endpoint API object. eg, neonDB or Neoscan.
- * @return {Promise<History>} - Transaction history
+ * @return {Promise<PastTransaction[]>} - Transaction history
  */
 export const getTransactionHistoryFrom = (config, api) => {
   return new Promise((resolve) => {
