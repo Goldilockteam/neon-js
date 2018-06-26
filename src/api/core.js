@@ -35,7 +35,7 @@ export const sendAsset = config => {
     .then(fillBalance)
     .then(c => createTx(c, 'contract'))
     .then(c => addAttributesIfExecutingAsSmartContract(c))
-    .then(c => signTx(c))
+    .then(c => signTx(c, config.txDesc))
     .then(c => attachContractIfExecutingAsSmartContract(c))
     .then(c => sendTx(c))
     .catch(err => {
@@ -155,7 +155,7 @@ export const fillBalance = config => {
 export const fillKeys = config => {
   if (config.account) {
     if (!config.address) config.address = config.account.address
-    if (!config.privateKey && !config.signingFunction) config.privateKey = config.account.privateKey
+    // if (!config.privateKey && !config.signingFunction) config.privateKey = config.account.privateKey
     if (!config.publicKey && config.signingFunction) config.publicKey = config.account.publicKey
   }
   return Promise.resolve(config)
@@ -247,6 +247,9 @@ export const signTx = config => {
   checkProperty(config, 'tx')
   checkProperty(config, 'address')
 
+  if(config.approvalMessage)
+    config.approvalMessage(config.tx)
+
   const serializedTx = serializeTransaction(config.tx)
 
   const ret = window._comm.req({
@@ -255,9 +258,13 @@ export const signTx = config => {
     tx: serializedTx
   })
   .then(serializedSignedTx => {
-    // const deserializedSignedTx = deserializeTransaction(serializedSignedTx)
-    // return Object.assign(config, { tx: deserializedSignedTx })
-    return Object.assign(config, { tx: serializedSignedTx })
+
+    const deserializedSignedTx = deserializeTransaction(serializedSignedTx)
+    const obj = Object.assign(config, { tx: new Transaction(deserializedSignedTx) })
+
+    // const obj = Object.assign(config, { tx: serializedSignedTx })
+    console.dir(obj)
+    return obj
   })
 
   return ret
@@ -286,7 +293,7 @@ export const sendTx = config => {
           net: config.net, address: config.address, intents: config.intents, balance: config.balance, claims: config.claims, script: config.script, gas: config.gas, tx: config.tx
         }
         log.error(
-          `Transaction failed for ${config.address}: ${config.tx.serialize()}`,
+          `Transaction failed for ${config.address}: ${typeof config.tx.serialize == 'function' ? config.tx.serialize() : 'n/a'}`,
           dump
         )
       }
