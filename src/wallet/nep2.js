@@ -104,6 +104,7 @@ export const encryptAsync = (wifKey, keyphrase, scryptParams = DEFAULT_SCRYPT) =
  */
 export const decrypt = (encryptedKey, keyphrase, scryptParams = DEFAULT_SCRYPT) => {
   log.warn('This method will be replaced by decryptAsync in the next major version bump')
+  console.log('decrypt')
   scryptParams = ensureScryptParams(scryptParams)
   const scryptJsParams = { cost: scryptParams.n, blockSize: scryptParams.r, parallel: scryptParams.p }
   const assembled = ab2hexstring(bs58check.decode(encryptedKey))
@@ -122,6 +123,23 @@ export const decrypt = (encryptedKey, keyphrase, scryptParams = DEFAULT_SCRYPT) 
   return account.WIF
 }
 
+
+const timeSpan = (t) => {
+	var f = Math.floor;
+	if(t < 1000)
+		return t + "ms";
+	if(t < 60000)
+		return f(t / 1000) + "s " + f(t % 1000) + "ms";
+	if(t < 3600000)
+		return f(t / 60000) + "m " + f((t % 60000) / 1000) + "s " + f(t % 1000) + "ms";
+	if(t < 86400000)
+		return f(t / 3600000) + "h " + f((t % 3600000) / 60000) + "m " +
+			f((t % 60000) / 1000) + "s " + f(t % 1000) + "ms";
+	return f(t / 86400000) + "d " +
+		f((t % 86400000) / 3600000) + "h " + f((t % 3600000) / 60000) + "m " +
+		f((t % 60000) / 1000) + "s " + f(t % 1000) + "ms";
+}
+
 /**
  * Decrypts an encrypted key using a given keyphrase under NEP-2 Standard.
  * @param {string} encryptedKey - The encrypted key (58 chars long).
@@ -131,6 +149,54 @@ export const decrypt = (encryptedKey, keyphrase, scryptParams = DEFAULT_SCRYPT) 
  */
 export const decryptAsync = (encryptedKey, keyphrase, scryptParams = DEFAULT_SCRYPT) => {
   log.warn('This method will be renamed to decrypt in the next major version bump')
+
+  const nativeScrypt = process.mainModule.exports.nativeScrypt
+
+  console.log(`decryptAsync using ${nativeScrypt ? 'node-scrypt' : 'scrypt-js'}`)
+
+  return new Promise((resolve, reject) => {
+    scryptParams = ensureScryptParams(scryptParams)
+    const { n, r, p } = scryptParams
+    const assembled = ab2hexstring(bs58check.decode(encryptedKey))
+    const addressHash = assembled.substr(6, 8)
+    const encrypted = assembled.substr(-64)
+    const _keyphrase = Buffer.from(keyphrase.normalize('NFC'), 'utf8')
+    const _addressHash = Buffer.from(addressHash, 'hex')
+
+    const callback = (error, progress, key) => {
+      if(nativeScrypt)
+        key = progress
+      if (error != null) {
+        reject(error)
+      } else if (key) {
+        console.log(`scrypt took ${timeSpan(Date.now() - t)}`) //GOLDI
+        const derived = (nativeScrypt ? key : Buffer.from(key)).toString('hex')
+        const derived1 = derived.slice(0, 64)
+        const derived2 = derived.slice(64)
+        const ciphertext = { ciphertext: enc.Hex.parse(encrypted), salt: '' }
+        const decrypted = AES.decrypt(ciphertext, enc.Hex.parse(derived2), AES_OPTIONS)
+        const privateKey = hexXor(decrypted.toString(), derived1)
+        const account = new Account(privateKey)
+        const newAddressHash = SHA256(SHA256(enc.Latin1.parse(account.address))).toString().slice(0, 8)
+        if (addressHash !== newAddressHash) reject(new Error('Wrong Password or scrypt parameters!'))
+        log.info(`Successfully decrypted ${encryptedKey}`)
+        resolve(account.WIF)
+      }
+    }
+    let t = Date.now() //GOLDI
+    if(nativeScrypt) {
+      nativeScrypt.hash(keyphrase, { N: 14, r: 8, p: 8 }, 64, _addressHash, callback)
+    }
+    else {
+      asyncScrypt(_keyphrase, _addressHash, n, r, p, 64, callback)
+    }
+  })
+}
+
+/*
+export const decryptAsync = (encryptedKey, keyphrase, scryptParams = DEFAULT_SCRYPT) => {
+  log.warn('This method will be renamed to decrypt in the next major version bump')
+  console.log('decryptAsync')
   return new Promise((resolve, reject) => {
     scryptParams = ensureScryptParams(scryptParams)
     const { n, r, p } = scryptParams
@@ -156,6 +222,7 @@ export const decryptAsync = (encryptedKey, keyphrase, scryptParams = DEFAULT_SCR
     })
   })
 }
+*/
 
 const ensureScryptParams = (params) => {
   const oldParams = Object.assign({}, DEFAULT_SCRYPT, params)
