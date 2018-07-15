@@ -1,7 +1,8 @@
 import { Account, getScriptHashFromAddress, generateRandomArray } from '../wallet'
 import { ASSET_ID } from '../consts'
 import { Query } from '../rpc'
-import { Transaction, TransactionOutput, TxAttrUsage } from '../transactions'
+import { Transaction, TransactionOutput, TxAttrUsage,
+  serializeTransaction, deserializeTransaction } from '../transactions'
 import { reverseHex, ab2hexstring } from '../utils'
 import { loadBalance } from './switch'
 import logger from '../logging'
@@ -34,7 +35,7 @@ export const sendAsset = config => {
     .then(fillBalance)
     .then(c => createTx(c, 'contract'))
     .then(c => addAttributesIfExecutingAsSmartContract(c))
-    .then(c => signTx(c))
+    .then(c => signTx(c, config.txDesc))
     .then(c => attachContractIfExecutingAsSmartContract(c))
     .then(c => sendTx(c))
     .catch(err => {
@@ -154,7 +155,7 @@ export const fillBalance = config => {
 export const fillKeys = config => {
   if (config.account) {
     if (!config.address) config.address = config.account.address
-    if (!config.privateKey && !config.signingFunction) config.privateKey = config.account.privateKey
+    // if (!config.privateKey && !config.signingFunction) config.privateKey = config.account.privateKey
     if (!config.publicKey && config.signingFunction) config.publicKey = config.account.publicKey
   }
   return Promise.resolve(config)
@@ -214,7 +215,7 @@ export const createTx = (config, txType) => {
  * @param {bool} [config.sendingFromSmartContract] - Optionally specify that the source address is a smart contract that doesn't correspond to the private key.
  * @return {Promise<object>} Configuration object.
  */
-export const signTx = config => {
+export const signTx_orig = config => {
   checkProperty(config, 'tx')
   let promise
   if (config.signingFunction) {
@@ -242,6 +243,33 @@ export const signTx = config => {
   })
 }
 
+export const signTx = config => {
+  checkProperty(config, 'tx')
+  checkProperty(config, 'address')
+
+  if(config.approvalMessage)
+    config.approvalMessage(config.tx)
+
+  const serializedTx = serializeTransaction(config.tx)
+
+  const ret = window._comm.req({
+    fn: 'signTx',
+    address: config.address,
+    tx: serializedTx
+  })
+  .then(serializedSignedTx => {
+
+    const deserializedSignedTx = deserializeTransaction(serializedSignedTx)
+    const obj = Object.assign(config, { tx: new Transaction(deserializedSignedTx) })
+
+    // const obj = Object.assign(config, { tx: serializedSignedTx })
+    console.dir(obj)
+    return obj
+  })
+
+  return ret
+}
+
 /**
  * Sends a transaction off within the config object.
  * @param {object} config - Configuration object.
@@ -265,7 +293,7 @@ export const sendTx = config => {
           net: config.net, address: config.address, intents: config.intents, balance: config.balance, claims: config.claims, script: config.script, gas: config.gas, tx: config.tx
         }
         log.error(
-          `Transaction failed for ${config.address}: ${config.tx.serialize()}`,
+          `Transaction failed for ${config.address}: ${typeof config.tx.serialize == 'function' ? config.tx.serialize() : 'n/a'}`,
           dump
         )
       }

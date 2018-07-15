@@ -7,7 +7,7 @@ Object.keys(defaultNetworks).map(key => {
   networks[key] = Network.import(defaultNetworks[key])
 })
 
-export var httpsOnly = false
+export var httpsOnly = true // GOLDILOCK
 
 export var defaultCalculationStrategy = balancedApproach
 
