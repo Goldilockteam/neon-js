@@ -142,12 +142,13 @@ const timeSpan = (t) => {
 
 /**
  * Decrypts an encrypted key using a given keyphrase under NEP-2 Standard.
+ * Uses native Scrypt, if available.
  * @param {string} encryptedKey - The encrypted key (58 chars long).
  * @param {string} keyphrase - The password will be encoded as UTF-8 and normalized using Unicode Normalization Form C (NFC).
  * @param {scryptParams} [scryptParams] - Parameters for Scrypt. Defaults to NEP2 specified parameters.
  * @returns {string} The decrypted WIF key.
  */
-export const decryptAsync = (encryptedKey, keyphrase, scryptParams = DEFAULT_SCRYPT) => {
+export const decryptAsyncNative = (encryptedKey, keyphrase, scryptParams = DEFAULT_SCRYPT) => {
   log.warn('This method will be renamed to decrypt in the next major version bump')
 
   const nativeScrypt = process.mainModule.exports.nativeScrypt
@@ -193,7 +194,13 @@ export const decryptAsync = (encryptedKey, keyphrase, scryptParams = DEFAULT_SCR
   })
 }
 
-/*
+/**
+ * Decrypts an encrypted key using a given keyphrase under NEP-2 Standard.
+ * @param {string} encryptedKey - The encrypted key (58 chars long).
+ * @param {string} keyphrase - The password will be encoded as UTF-8 and normalized using Unicode Normalization Form C (NFC).
+ * @param {scryptParams} [scryptParams] - Parameters for Scrypt. Defaults to NEP2 specified parameters.
+ * @returns {string} The decrypted WIF key.
+ */
 export const decryptAsync = (encryptedKey, keyphrase, scryptParams = DEFAULT_SCRYPT) => {
   log.warn('This method will be renamed to decrypt in the next major version bump')
   console.log('decryptAsync')
@@ -222,7 +229,6 @@ export const decryptAsync = (encryptedKey, keyphrase, scryptParams = DEFAULT_SCR
     })
   })
 }
-*/
 
 const ensureScryptParams = (params) => {
   const oldParams = Object.assign({}, DEFAULT_SCRYPT, params)
