@@ -1,14 +1,3 @@
-## Deps init for source build (tmp workaround for building on Hyper-V/Docker)
-
-1. `npm install --unsafe-perm --rollback=false`
-2. when the above fails*, do `cd node_modules/zopfli-webpack-plugin/node_modules/node-zopfli` and `npm run install`
-3. repeat step 1.
-4. `npm run build:dev`
-
-In case of `Error: -116` where the locked file is impossible to delete, reboot and rm/clone again.
-
-*seems like FS sync issues (add sync/sleep into zopfli build TBD)
-
 <p align="center">
   <img
     src="http://res.cloudinary.com/vidsy/image/upload/v1503160820/CoZ_Icon_DARKBLUE_200x178px_oq0gxm.png"
