@@ -10,8 +10,10 @@ import * as sc from './sc'
 import * as tx from './transactions'
 import * as wallet from './wallet'
 import * as u from './utils'
+import * as settings from './settings'
+import * as logging from './logging'
 
-export { api, CONST, rpc, sc, tx, wallet, u }
+export { api, CONST, rpc, sc, tx, wallet, u, settings, logging }
 
 
 declare const semantic: {
@@ -96,6 +98,12 @@ declare const semantic: {
       neo: number,
       gasCost: number
     ) => Promise<RPCResponse>
+  }
+  add: {
+    network: (network: rpc.Network, override?: boolean) => boolean
+  }
+  remove: {
+    network: (name: string) => boolean
   }
   sendAsset: (config: apiConfig) => Promise<apiConfig>
   claimGas: (config: apiConfig) => Promise<apiConfig>

@@ -3,9 +3,10 @@ import { ASSET_ID } from '../consts'
 import { Query } from '../rpc'
 import { Transaction, TransactionOutput, TxAttrUsage,
   serializeTransaction, deserializeTransaction } from '../transactions'
-import { reverseHex, ab2hexstring } from '../utils'
+import { int2hex, reverseHex, ab2hexstring } from '../utils'
 import { loadBalance } from './switch'
 import logger from '../logging'
+import { StateType, StateDescriptor } from '../transactions/StateDescriptor'
 
 const log = logger('api')
 
@@ -60,6 +61,7 @@ export const sendAsset = config => {
  * @param {string} [config.privateKey] - private key to sign with. Either this or signingFunction and publicKey is required.
  * @param {function} [config.signingFunction] - An external signing function to sign with. Either this or privateKey is required.
  * @param {string} [config.publicKey] - A public key for the singing function. Either this or privateKey is required.
+ * @param {bool} [config.sendingFromSmartContract] - Optionally specify that the source address is a smart contract that doesn't correspond to the private key.
  * @return {Promise<object>} Configuration object.
  */
 export const claimGas = config => {
@@ -67,7 +69,9 @@ export const claimGas = config => {
     .then(fillKeys)
     .then(fillClaims)
     .then(c => createTx(c, 'claim'))
+    .then(c => addAttributesIfExecutingAsSmartContract(c))
     .then(c => signTx(c))
+    .then(c => attachContractIfExecutingAsSmartContract(c))
     .then(c => sendTx(c))
     .catch(err => {
       const dump = {
@@ -112,12 +116,39 @@ export const doInvoke = config => {
       const dump = {
         net: config.net,
         address: config.address,
-        intents: config.intents,
-        balance: config.balance,
         tx: config.tx,
         script: config.script,
         gas: config.gas,
         fees: config.fees
+      }
+      log.error(`doInvoke failed with ${err.message}. Dumping config`, dump)
+      throw err
+    })
+}
+
+/**
+ * Setup votes for an account using StateTransaction.
+ * @param {object} config
+ * @param {string[]} config.candidateKeys - List of public keys to vote for
+ */
+export const setupVote = config => {
+  return fillUrl(config)
+    .then(fillKeys)
+    .then(fillBalance)
+    .then(buildDescriptors)
+    .then(c => createTx(c, 'state'))
+    .then(c => addAttributesIfExecutingAsSmartContract(c))
+    .then(attachAttributesForEmptyTransaction)
+    .then(c => signTx(c))
+    .then(c => attachContractIfExecutingAsSmartContract(c))
+    .then(c => sendTx(c))
+    .catch(err => {
+      const dump = {
+        net: config.net,
+        address: config.address,
+        intents: config.intents,
+        balance: config.balance,
+        candidateKeys: config.candidateKeys
       }
       log.error(`doInvoke failed with ${err.message}. Dumping config`, dump)
       throw err
@@ -171,6 +202,16 @@ export const fillClaims = config => {
   return loadBalance(getClaimsFrom, config)
 }
 
+export const buildDescriptors = config => {
+  if (config.descriptors) return Promise.resolve(config)
+  config.descriptors = [new StateDescriptor({
+    type: StateType.Account,
+    key: reverseHex(new Account(config.address).scriptHash),
+    field: 'Votes',
+    value: int2hex(config.candidateKeys.length) + config.candidateKeys.join('')
+  })]
+  return Promise.resolve(config)
+}
 /**
  * Creates a transaction with the given config and txType.
  * @param {object} config - Configuration object.
@@ -198,6 +239,11 @@ export const createTx = (config, txType) => {
       checkProperty(config, 'balance', 'gas', 'script')
       if (!config.intents) config.intents = []
       tx = Transaction.createInvocationTx(config.balance, config.intents, config.script, config.gas, config.override, config.fees)
+      break
+    case 'state':
+    case 144:
+      checkProperty(config, 'descriptors')
+      tx = Transaction.createStateTx(config.descriptors, config.override)
       break
     default:
       return Promise.reject(new Error(`Tx Type not found: ${txType}`))

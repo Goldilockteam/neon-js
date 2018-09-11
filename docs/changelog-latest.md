@@ -3,6 +3,71 @@ id: changelog-latest
 title: Changelog (v3)
 ---
 
+3.11.0
+======
+
+- Wallet
+
+  - Add multi-sig support through `Account.createMultiSig`.
+
+- Transaction
+
+  - Add multi-sig support through `Witness.buildMultiSig`.
+
+3.10.1
+======
+
+- Fixes
+
+  - Adjust default timeout for rpc calls to 30s from 5s.
+
+3.10.0
+======
+
+- API
+
+  - `getTokenBalances` to retrieve multiple token balances for a single address within a single HTTP call.
+  - `setupVote` is a new method that allows you to setup your voting status for your neo.
+
+  ```js
+  const config = {
+    net: 'TestNet',
+    account: new wallet.Account(privateKey),
+    candidateKeys: [key1, key2] // Keys retrieved from a getValidators call.
+  }
+  Neon.api.setupVote(config)
+  ```
+
+- RPC
+
+  - `getvalidators` call added. This call returns the list of possible candidates as well as their current vote tally.
+
+- Wallet
+
+  - `verifySignature` as the counterpart to `generateSignature`. This makes it possible to verify signatures of pure hexstrings.
+  - State Transaction support is added.
+
+- Website
+
+  - Redirect static package to use unpkg. This will serve the latest browser.js that is published.
+
+3.9.2
+=====
+
+- Fixes
+
+  - Change default return value of contract in deployContract to ff00
+  - Fix bug in `getRPCEndpoint` where we drop the list when finding a new best height
+  - Fix bug in `getRPCEndpoint` where a rejected promise was ending the Promise.race
+  - Remove neonDB tests
+
+3.9.1
+=====
+
+- Fixes
+
+  - Added `sendingFromSmartContract` for claimGas.
+
 3.9.0
 =====
 
